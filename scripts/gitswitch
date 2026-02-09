@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# gitswitch: switch which SSH key is used for github.com
+# Usage: gitswitch [toshizen|110662]
+set -euo pipefail
+
+usage() {
+  echo "Usage: $0 [toshiaki|toshizen|110662|tochibow]" >&2
+  exit 2
+}
+
+[[ $# -eq 1 ]] || usage
+profile="$1"
+GIT_NAME=""
+GIT_EMAIL=""
+
+SSH_DIR="${HOME}/.ssh"
+mkdir -p "${SSH_DIR}"
+chmod 700 "${SSH_DIR}" || true
+
+case "${profile}" in
+  toshiaki)
+    KEY_PRIV="${SSH_DIR}/id_ed25519_toshiaki-sato9"
+    GIT_NAME="Toshiaki Sato"
+    GIT_EMAIL="tochibow999@gmail.com"
+    ;;
+  toshizen)
+    KEY_PRIV="${SSH_DIR}/id_ed25519_toshizen2"
+    GIT_NAME="toshizen"
+    GIT_EMAIL="toshiaki.sato@shizenenergy.net"
+	;;
+  110662)
+    KEY_PRIV="${SSH_DIR}/id_ed25519"
+    ;;
+  tochibow)
+    KEY_PRIV="${SSH_DIR}/id_ed25519"
+	;;
+  *)
+    usage
+    ;;
+esac
+
+# sanity checks
+if [[ ! -f "${KEY_PRIV}" ]]; then
+  echo "Error: key not found: ${KEY_PRIV}" >&2
+  exit 1
+fi
+
+# Symlink path used by ssh config
+LINK="${SSH_DIR}/id_ed25519_github_current"
+
+# Create/refresh a stable symlink to the selected key
+ln -sfn "${KEY_PRIV}" "${LINK}"
+
+# Tighten permissions (ssh is picky)
+chmod 600 "${KEY_PRIV}" || true
+if [[ -f "${KEY_PRIV}.pub" ]]; then chmod 644 "${KEY_PRIV}.pub" || true; fi
+
+# Ensure we have a managed block in ~/.ssh/config that pins github.com to the symlink
+CFG="${SSH_DIR}/config"
+TMP="$(mktemp)"
+{
+  echo "# gitswitch BEGIN (managed block)"
+  echo "Host github.com"
+  echo "  HostName github.com"
+  echo "  User git"
+  echo "  IdentityFile ${LINK}"
+  echo "  IdentitiesOnly yes"
+  echo "  AddKeysToAgent yes"
+  echo "  UseKeychain yes"
+  echo "# gitswitch END"
+} > "${TMP}"
+
+# Remove any existing managed block, then prepend fresh one for highest precedence
+if [[ -f "${CFG}" ]]; then
+  awk 'BEGIN{skip=0} /# gitswitch BEGIN/{skip=1} !skip{print} /# gitswitch END/{skip=0}' "${CFG}" > "${CFG}.nogs" || true
+  cat "${TMP}" "${CFG}.nogs" > "${CFG}.new"
+  mv "${CFG}.new" "${CFG}"
+  rm -f "${CFG}.nogs"
+else
+  mv "${TMP}" "${CFG}"
+fi
+chmod 600 "${CFG}" || true
+rm -f "${TMP}" || true
+
+# Load the selected key into ssh-agent (without flushing others)
+if command -v ssh-agent >/dev/null 2>&1; then
+  if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
+    eval "$(ssh-agent -s)" >/dev/null
+  fi
+  if ssh-add -h 2>&1 | grep -q -- "--apple-use-keychain"; then
+    ssh-add --apple-use-keychain "${KEY_PRIV}" >/dev/null
+  else
+    ssh-add "${KEY_PRIV}" >/dev/null
+  fi
+fi
+
+if [[ -n "${GIT_NAME}" && -n "${GIT_EMAIL}" ]]; then
+  git config --global user.name "${GIT_NAME}"
+  git config --global user.email "${GIT_EMAIL}"
+fi
+
+echo "Switched github.com SSH identity to '${profile}'."
+echo "Key: ${KEY_PRIV}"
+echo
+echo "Verify with:"
+echo "  ssh -T git@github.com"
+ssh -T git@github.com
