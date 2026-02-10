@@ -1,14 +1,14 @@
 ---
 title: ペンテストに備えるIoTデバイス開発環境の設計と現実解
 tags:
-  - Yocto
+  - Security
+  - devops
+  - yocto
   - IoT
   - 組み込みLinux
-  - セキュリティ
-  - DevOps
 private: true
-updated_at: ''
-id: null
+updated_at: '2026-02-10T15:44:10+09:00'
+id: 74dd58a0d9effc4e0d1a
 organization_url_name: null
 slide: false
 ignorePublish: false
@@ -145,6 +145,58 @@ rootfs（親リポジトリ）
 
 この方針転換により、現時点では安定して運用できています。
 
+### rootfs再現の具体的な手順
+
+実際のrootfs構築は、以下のような手順で行っています。
+
+1. **ベースrootfsの展開**
+   ```bash
+   # ベンダー提供またはビルド済みのrootfs.tar.gzを展開
+   tar xzf rootfs.tar.gz -C ./build/rootfs/
+   ```
+
+2. **クロスアーキテクチャ環境の準備**
+   ```bash
+   # x86ホスト上でARM用rootfsを操作するため、qemu-arm-staticを配置
+   cp /usr/bin/qemu-arm-static ./build/rootfs/usr/bin/
+
+   # rootfs構築用のfixupスクリプトを配置
+   cp scripts/fixup ./build/rootfs/tmp/
+   ```
+
+3. **chrootでrootfs内に入り、パッケージ展開を実行**
+   ```bash
+   # chrootしてARM環境として実行
+   sudo chroot ./build/rootfs /usr/bin/qemu-arm-static /bin/bash /tmp/fixup
+   ```
+
+4. **fixupスクリプト内での処理**
+   ```bash
+   #!/bin/bash
+   # fixup の例
+
+   # ipkパッケージのインストール
+   opkg install /tmp/packages/*.ipk
+
+   # Module FWのホストドライバをデプロイ
+   cp -r /tmp/module-fw/drivers/* /lib/modules/$(uname -r)/
+
+   # ドライバの依存関係を更新
+   depmod -a
+
+   # 必要に応じてカーネルモジュールのロード設定
+   echo "module_name" >> /etc/modules
+   ```
+
+5. **後処理とクリーンアップ**
+   ```bash
+   # 作業用ファイルの削除
+   sudo rm ./build/rootfs/usr/bin/qemu-arm-static
+   sudo rm ./build/rootfs/tmp/fixup.sh
+   ```
+
+以上の方法で、x86ホスト上でARM用rootfsを構築しながら、パーミッションやパッケージ管理を正しくしています。qemu-arm-staticを使うことで、ARM用のバイナリをホストマシン上で実行可能になり、chrootした環境内でネイティブのパッケージマネージャ等を利用可能としています。
+
 ## 開発環境を支える2つのビルドパス
 
 ### なぜ2系統のビルドパスが必要か
@@ -173,7 +225,25 @@ rootfs（親リポジトリ）
 3. 生成したバイナリをクラウドへ登録
 4. クラウド側（デプロイサーバー）の仕組みによりShizen Box へ自動的に配布・更新
 
-この経路では、以下を重視しています。
+#### ipkパッケージの生成方法
+
+ビルド環境は用途によって使い分けています。
+
+- **applicationのビルド**: Docker環境でクロスコンパイルし、ipkパッケージを生成
+- **汎用パッケージのビルド**: pokyのBitBakeを使用してipkパッケージを生成
+
+```bash
+# 汎用パッケージのビルド例
+source poky/oe-init-build-env
+bitbake <package-name>
+
+# 生成されたipkファイルを取得
+cp build/tmp/deploy/ipk/armv7a/*.ipk ./packages/
+```
+
+このように、Dockerによる迅速な開発と、pokyによる依存関係管理の恩恵を組み合わせたハイブリッドな構成としています。
+
+このパス⓵の経路では、以下を重視しています。
 
 - 差分更新による影響範囲の限定
 - 障害時の切り分け容易性（どのコンポーネントが原因かを特定しやすい）
@@ -183,13 +253,13 @@ rootfs（親リポジトリ）
 
 キッティング時には、運用時とは別のビルド環境を使用します。
 
-1. VirtualBox 上のビルド環境で、各リポジトリを submodule として取得
+1. ビルド環境で、各リポジトリを submodule として取得
 2. application / kernel / U-Boot / Module FW を rootfs に展開
 3. パッケージ・設定を含めた SD ブート用イメージを生成
 4. 生成した SD イメージを SD カードへ書き込み
 5. Shizen Box に挿入して初期状態を構築
 
-この構成により、以下を達成しています。
+このパス⓶の構成により、以下を達成しています。
 
 - 初期状態の信頼性（全レイヤを含む完全な状態）
 - 運用中アップデートの可視性（何が変更されたか追跡可能）
@@ -205,7 +275,7 @@ Shizen Box の開発環境は、その問いに対する一つの現実解だと
 
 理想的なYocto構成を採用できなかった背景には、チームの体制や開発スケジュールといった制約がありましたが、submodule方式とrootfs再現手順の管理によって、ペンテスト対応に必要なフルスタック対応力を確保できました。
 
-次回（第二回）では、このフルスタック開発環境を前提に、ペンテスト実施前に行った事前の守備固め（侵入対策・DOS対策など）について紹介します。
+次回（第二回）では、このフルスタック開発環境を前提に、ペンテスト実施前に行った事前の守備固め（侵入対策・DOS対策など）について紹介したいと思います。
 
 同じような制約の中でIoT / 組み込み開発に向き合っている方の参考になれば幸いです。
 
@@ -216,4 +286,13 @@ Shizen Box の開発環境は、その問いに対する一つの現実解だと
 - 設定値・構成・数値は一部簡略化または一般化しています。
 
 記載内容はあくまで一例であり、すべてのIoT機器・システムにそのまま適用できるものではありません。実際の運用にあたっては、対象環境やリスクレベルに応じた検討が必要です。
+
+### 参考記事
+
+- [Raspberry Pi 4とWSL2を使ってYocto Project入門 - Qiita y-tsutsuさん](https://qiita.com/y-tsutsu/items/cbae3a2da083d42421c1)
+- [Yocto Project 5.0により組み込みAIにも対応できるRaspberry Pi 5向けのカスタムLinuxディストリビューションをビルドする - Qiita - xtrizeShinoさん](https://qiita.com/xtrizeShino/items/91974cdc84bc8af24017)
+- [Raspberry Pi のセルフビルド環境を QEMU で作る - Qiita - autchさん](https://qiita.com/autch/items/c8c9cdc7b8e5821e81a4)
+- [Dockerや QEMU のハードウェアエミュレーションを使用せず chroot と QEMU スタティックモジュールのみでRaspberry Piのエミュレーション環境を起動する - Qiita - PINTOさん](https://qiita.com/PINTO/items/fd6b5f8d56b73bb37447)
+
+
 
