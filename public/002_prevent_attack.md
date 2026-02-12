@@ -1,14 +1,14 @@
 ---
 title: ペンテストに備えるIoTデバイスの守備固め
 tags:
-  - Yocto
+  - Security
+  - devops
+  - yocto
   - IoT
   - 組み込みLinux
-  - セキュリティ
-  - DevOps
 private: true
-updated_at: ''
-id: null
+updated_at: '2026-02-10T21:29:08+09:00'
+id: a2ec2df774b2807573d8
 organization_url_name: null
 slide: false
 ignorePublish: false
@@ -122,6 +122,18 @@ iptables -A INPUT -p udp --sport 123 \
 ```bash
 nmap -sS <target-ip>
 ```
+
+**注意**: Nmap はデフォルトでは全ポート（65535ポート）をスキャンせず、よく使われる上位1000ポートのみをスキャンします。全ポートを確認する場合は、ポート範囲を明示的に指定してください。
+
+```bash
+# 全ポートをスキャンする場合（1-65535を明示）
+nmap -sS -p 1-65535 <target-ip>
+
+# 省略形（-p- は -p 1-65535 と同義）
+nmap -sS -p- <target-ip>
+```
+
+スキャン漏れがないよう、検証目的に応じてポート範囲を明示的に指定することを推奨します。
 
 * 設定前：複数ポートが open / filtered として検出されました
 * 設定後：不要なポートは検出されない状態になりました

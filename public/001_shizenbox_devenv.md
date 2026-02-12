@@ -7,7 +7,7 @@ tags:
   - IoT
   - 組み込みLinux
 private: true
-updated_at: '2026-02-10T15:44:10+09:00'
+updated_at: '2026-02-10T21:29:08+09:00'
 id: 74dd58a0d9effc4e0d1a
 organization_url_name: null
 slide: false
@@ -119,13 +119,70 @@ rootfs（親リポジトリ）
 
 理想と現実のギャップが最も明確に問題として顕在化したのが、rootfsの扱いでした。
 
-当初、実機に展開するrootfsをそのままGit管理しようとした結果、以下の問題が発生しました。
+当初、実機に展開するrootfsをそのままGit管理しようとした結果、展開後の実機で以下の問題が発生しました。
 
-- パーミッション差分の意図しない混入（Git が管理するパーミッション情報の制限）
-- /etc/passwd や /etc/shadow 周辺の属性崩れ
-- setuid ビットの消失により sudo が使用不能になる
+#### setuidビット消失によるsudo不能
 
-これはGit管理としては正常でも、組み込みOSとしては運用不能な状態です。
+正常なsudoの場合、setuidは以下で確認できます。
+
+```
+$ ls -l /usr/bin/sudo
+-rwsr-xr-x 1 root root ... /usr/bin/sudo
+```
+
+setuidが消えると
+
+```
+$ ls -l /usr/bin/sudo
+-rwxr-xr-x 1 root root ... /usr/bin/sudo
+   ↑ sではなくx
+```
+
+この状態でsudo実行した場合、下記のように実行できません。
+
+```
+$ sudo id
+sudo: /usr/bin/sudo must be owned by uid 0 and have the setuid bit set
+```
+
+このようにrootfsをGit上で管理しようとした結果、Git上でパーミッションが壊れて、実機へ展開した際に管理者昇格不能になります。
+
+#### /etc/shadowのパーミッション崩壊
+
+正常な場合：
+
+```
+-rw------- 1 root root /etc/shadow
+```
+
+誤った場合：
+
+```
+-rw-r--r-- 1 root root /etc/shadow
+```
+
+結果：
+```
+passwd: Authentication token manipulation error
+```
+
+このようにGit上では微小なパーミッション崩れでも、組み込みOSとしては認証基盤が破綻します。
+
+#### なぜGitで壊れるか
+
+Gitはプログラムのソースコードなど変更履歴を記録・追跡するための分散型バージョン管理システムです。
+
+保持できるのは：
+* 実行ビット
+* ファイル内容
+
+保持できないのは：
+* 詳細パーミッション（600 / 644など）
+* uid / gid
+* デバイスノード
+* 特殊ファイル属性
+
+rootfsは「ファイル集合」であると同時に「属性集合」でもあるため、Gitでrootfsを完全再現するには不向きであることが分かりました。
 
 ### 方針転換：rootfsを成果物として扱わない
 
@@ -143,7 +200,7 @@ rootfs（親リポジトリ）
 - リポジトリサイズ問題を回避できる
 - 同一手順で再現可能な rootfs を構築できる
 
-この方針転換により、現時点では安定して運用できています。
+この方針転換により、現時点では十分安定して運用できています。
 
 ### rootfs再現の具体的な手順
 
