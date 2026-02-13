@@ -7,7 +7,7 @@ tags:
   - IoT
   - 組み込みLinux
 private: true
-updated_at: '2026-02-12T21:57:12+09:00'
+updated_at: '2026-02-13T16:46:45+09:00'
 id: 74dd58a0d9effc4e0d1a
 organization_url_name: null
 slide: false
@@ -62,6 +62,9 @@ Shizen Box は、典型的な IoT / エッジデバイスと同様に、複数�
 | Module FW | WiFiハードウェアモジュールのファームウェア | ハードウェア連携の安定性確保 |
 
 これらに対してこれから実施されるペネトレーションテストや障害対応を見据えると、自分たちのサービスレイヤ（application）だけを触れる状態では不十分で、すべてのレイヤを把握・改善できる開発環境が必要でした。
+
+> **本記事における「フルスタック」の定義**
+> IoT/組み込み開発における「フルスタック」は、Webアプリケーション開発のフロントエンド〜バックエンドという意味ではなく、ハードウェア層からアプリケーション層まで、OSI参照モデルに近い全レイヤを指します。本記事では、Module FW（物理層）からapplication（アプリケーション層）までの5層を「フルスタック」と呼んでいます。
 
 特にペンテストでは、アプリケーション層だけでなく、カーネルやブートプロセスに関する指摘を受ける可能性があり、それらに迅速に対応するためにはフルスタックでの対応力が求められました。
 
@@ -130,12 +133,12 @@ $ ls -l /usr/bin/sudo
 -rwsr-xr-x 1 root root ... /usr/bin/sudo
 ```
 
-setuidが消えると
+これに対してrootfsをGit管理するとsetuidビットが消失して
 
 ```
 $ ls -l /usr/bin/sudo
 -rwxr-xr-x 1 root root ... /usr/bin/sudo
-   ↑ sではなくx
+   ↑ sではなくxになってしまう
 ```
 
 この状態でsudo実行した場合、下記のように実行できません。
@@ -145,9 +148,11 @@ $ sudo id
 sudo: /usr/bin/sudo must be owned by uid 0 and have the setuid bit set
 ```
 
-このようにrootfsをGit上で管理しようとした結果、Git上でパーミッションが壊れて、実機へ展開した際に管理者昇格が機能しなくなります。
+この結果、Git上でパーミッションが壊れたrootfsを実機へ展開した際に管理者昇格が機能しなくなります。
 
 #### /etc/shadowのパーミッション崩壊
+
+同様に、Password管理ファイル（/etc/shadow）のパーミッションも崩壊します。
 
 正常な場合：
 
@@ -155,7 +160,7 @@ sudo: /usr/bin/sudo must be owned by uid 0 and have the setuid bit set
 -rw------- 1 root root /etc/shadow
 ```
 
-誤った場合：
+パーミッションが壊れた場合：
 
 ```
 -rw-r--r-- 1 root root /etc/shadow
