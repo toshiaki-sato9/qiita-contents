@@ -1,5 +1,5 @@
 ---
-title: ペンテストに備えるIoTデバイス開発環境の設計と現実解
+title: ペンテストに備えるIoTデバイス開発環境の設計と実践的アプローチ
 tags:
   - Security
   - devops
@@ -77,7 +77,7 @@ Shizen Box は、典型的な IoT / エッジデバイスと同様に、複数�
 - BitBakeによる自動ビルド
 - 誰がいつどの環境でビルドしても同一のrootfsを生成できる再現性
 
-私自身これまでの経験から、今後の長期運用やCVE対応を考えるとこの構成が理想でした。
+私自身これまでの経験から、今後の長期運用やCVE（Common Vulnerabilities and Exposures：共通脆弱性識別子）対応を考えるとこの構成が理想でした。
 
 ### 制約条件
 
@@ -104,7 +104,7 @@ rootfs（親リポジトリ）
  ├── application (独立リポジトリ) → ビルド後バイナリをインストール
  ├── linux-kernel (submodule) → カーネルイメージを配置
  ├── u-boot (submodule) → ブートローダーを配置
- └── module-fw (独立リポジトリ) → ビルド後バイナリをインストール
+ └── Module FW (独立リポジトリ) → ビルド後バイナリをインストール
 ```
 
 この構成により、以下の運用上の利点を得られました。
@@ -115,7 +115,7 @@ rootfs（親リポジトリ）
 
 ## 実装で直面した課題と解決
 
-### rootfsをGitで管理する破綻
+### rootfsをGitで管理する問題
 
 理想と現実のギャップが最も明確に問題として顕在化したのが、rootfsの扱いでした。
 
@@ -145,7 +145,7 @@ $ sudo id
 sudo: /usr/bin/sudo must be owned by uid 0 and have the setuid bit set
 ```
 
-このようにrootfsをGit上で管理しようとした結果、Git上でパーミッションが壊れて、実機へ展開した際に管理者昇格不能になります。
+このようにrootfsをGit上で管理しようとした結果、Git上でパーミッションが壊れて、実機へ展開した際に管理者昇格が機能しなくなります。
 
 #### /etc/shadowのパーミッション崩壊
 
@@ -166,7 +166,7 @@ sudo: /usr/bin/sudo must be owned by uid 0 and have the setuid bit set
 passwd: Authentication token manipulation error
 ```
 
-このようにGit上では微小なパーミッション崩れでも、組み込みOSとしては認証基盤が破綻します。
+このようにGit上では微小なパーミッション崩れでも、組み込みOSとしては認証基盤が機能不全に陥ります。
 
 #### なぜGitで壊れるか
 
@@ -215,6 +215,7 @@ rootfsは「ファイル集合」であると同時に「属性集合」でも�
 2. **クロスアーキテクチャ環境の準備**
    ```bash
    # x86ホスト上でARM用rootfsを操作するため、qemu-arm-staticを配置
+   # qemu-arm-staticは、ARM命令セットをx86上でエミュレートする静的バイナリ
    cp /usr/bin/qemu-arm-static ./build/rootfs/usr/bin/
 
    # rootfs構築用のfixupスクリプトを配置
@@ -232,7 +233,8 @@ rootfsは「ファイル集合」であると同時に「属性集合」でも�
    #!/bin/bash
    # fixup の例
 
-   # ipkパッケージのインストール
+   # ipkパッケージ（opkg用のパッケージ形式）のインストール
+   # opkgは組み込みLinux向けの軽量パッケージマネージャ
    opkg install /tmp/packages/*.ipk
 
    # Module FWのホストドライバをデプロイ
@@ -284,7 +286,7 @@ rootfsは「ファイル集合」であると同時に「属性集合」でも�
 
 #### ipkパッケージの生成方法
 
-ビルド環境は用途によって使い分けています。
+ipkはopkg（組み込みLinux向けの軽量パッケージマネージャ）用のパッケージ形式です。ビルド環境は用途によって使い分けています。
 
 - **applicationのビルド**: Docker環境でクロスコンパイルし、ipkパッケージを生成
 - **汎用パッケージのビルド**: pokyのBitBakeを使用してipkパッケージを生成
@@ -300,7 +302,7 @@ cp build/tmp/deploy/ipk/armv7a/*.ipk ./packages/
 
 このように、Dockerによる迅速な開発と、pokyによる依存関係管理の恩恵を組み合わせたハイブリッドな構成としています。
 
-このパス⓵の経路では、以下を重視しています。
+このパス①の経路では、以下を重視しています。
 
 - 差分更新による影響範囲の限定
 - 障害時の切り分け容易性（どのコンポーネントが原因かを特定しやすい）
