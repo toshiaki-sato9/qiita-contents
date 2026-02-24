@@ -7,7 +7,7 @@ tags:
   - IoT
   - 組み込みLinux
 private: true
-updated_at: '2026-02-24T13:40:40+09:00'
+updated_at: '2026-02-24T14:12:04+09:00'
 id: 74dd58a0d9effc4e0d1a
 organization_url_name: null
 slide: false
@@ -354,11 +354,9 @@ Yoctoの完全自動化よりも運用時の即応性と可視性を優先した
 
 ### 参考資料
 
-- [Yocto Project](https://www.yoctoproject.org/)
 - [Yocto Project Documentation](https://docs.yoctoproject.org/)
 - [Root Filesystem - Yocto Project Reference Manual](https://docs.yoctoproject.org/ref-manual/terms.html#term-Root-Filesystem)
 - [U-Boot Documentation](https://u-boot.readthedocs.io/)
-- [QEMU](https://www.qemu.org/)
 - [opkg - OpenWrt](https://openwrt.org/docs/guide-user/additional-software/opkg)
 - [Git Internals - Git Objects (ファイルモードとパーミッション)](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects)
 - [gitattributes - Git公式ドキュメント](https://git-scm.com/docs/gitattributes)
