@@ -6,8 +6,8 @@ tags:
   - IoT
   - 組み込みLinux
   - emmc
-private: true
-updated_at: '2026-03-03T20:42:28+09:00'
+private: false
+updated_at: '2026-03-04T08:47:27+09:00'
 id: 2f0dcff571f252f9246f
 organization_url_name: null
 slide: false
