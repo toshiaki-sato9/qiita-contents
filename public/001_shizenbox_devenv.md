@@ -1,5 +1,5 @@
 ---
-title: rootfsをGitで管理して痛い目に遭った話と、ペンテストに強い開発環境の設計
+title: rootfsをGitで管理して痛い目に遭った話と、ペンテストに対応できる開発環境の作り方
 tags:
   - Security
   - devops
@@ -7,7 +7,7 @@ tags:
   - IoT
   - 組み込みLinux
 private: true
-updated_at: '2026-04-18T11:20:36+09:00'
+updated_at: '2026-04-21T15:33:52+09:00'
 id: 74dd58a0d9effc4e0d1a
 organization_url_name: null
 slide: false
@@ -20,7 +20,7 @@ ignorePublish: false
 私は現在エネルギーマネジメントシステムを支えるエッジ端末「Shizen Box」を開発しています。
 
 一般的にエッジ端末（IoTデバイス）へのペネトレーションテストは、アプリケーション層だけではなく、カーネル、ブートローダー、ファームウェアまでが指摘対象になり得ると思います。
-そのときに、自分たちでフルスタックに対応できる開発環境があるかが重要になるので、今回は環境構築で直面したrootfsのGit管理の失敗を交えながら、ペンテストに強い開発環境についてお話します。
+そのときに、自分たちでフルスタックに対応できる開発環境があるかが重要になるので、今回は環境構築で直面したrootfsのGit管理の失敗を交えながら、ペンテストに対応できる開発環境についてお話します。
 
 昨年、Shizen Boxは第三者ペネトレーションテスト（以下、ペンテスト）を実施しました。
 
@@ -161,31 +161,6 @@ sudo: /usr/bin/sudo must be owned by uid 0 and have the setuid bit set
 ```
 
 この結果、Git上でパーミッションが壊れたrootfsを実機へ展開した際に管理者昇格が機能しなくなります。
-
----
-
-#### /etc/shadowのパーミッション崩壊
-
-同様に、パスワード管理ファイル（/etc/shadow）のパーミッションも崩壊します。
-
-正常な場合：
-
-```
--rw-r----- 1 root root /etc/shadow
-```
-
-パーミッションが壊れた場合：
-
-```
--rw-r--r-- 1 root root /etc/shadow
-```
-
-結果：
-```
-passwd: Authentication token manipulation error
-```
-
-このようにGit上では微小なパーミッション崩れでも、組み込みOSとしては認証基盤が機能不全に陥ります。
 
 ---
 
@@ -413,7 +388,7 @@ cp build/tmp/deploy/ipk/armv7a/*.ipk ./packages/
 
 ## おわりに
 
-技術選定の正しさそのものよりも、誰が・いつ・最後まで責任を持って対応できるか。
+理想とする技術選定よりも、問題が浮上したときにチームで責任を持って対応できること。
 
 Shizen Box の開発環境は、その問いに対する組み込みLinux開発における現実的な解の一つだと考えています。
 
@@ -427,9 +402,7 @@ Yoctoの完全自動化よりも運用時の即応性と可視性を優先した
 
 - [Yocto Project Documentation](https://docs.yoctoproject.org/)
 - [Root Filesystem - Yocto Project Reference Manual](https://docs.yoctoproject.org/ref-manual/terms.html#term-Root-Filesystem)
-- [U-Boot Documentation](https://u-boot.readthedocs.io/)
 - [opkg - OpenWrt](https://openwrt.org/docs/guide-user/additional-software/opkg)
 - [Git Internals - Git Objects (ファイルモードとパーミッション)](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects)
-- [gitattributes - Git公式ドキュメント](https://git-scm.com/docs/gitattributes)
 
 
