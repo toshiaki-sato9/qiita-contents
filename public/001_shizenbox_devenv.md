@@ -6,10 +6,10 @@ tags:
   - yocto
   - IoT
   - 組み込みLinux
-private: true
-updated_at: '2026-04-21T15:33:52+09:00'
+private: false
+updated_at: '2026-04-28T10:31:15+09:00'
 id: 74dd58a0d9effc4e0d1a
-organization_url_name: null
+organization_url_name: shizen_connect
 slide: false
 ignorePublish: false
 ---
