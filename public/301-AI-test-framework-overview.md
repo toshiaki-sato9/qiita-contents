@@ -113,46 +113,7 @@ AI Agent と結合テストフレームワークも、役割としては分け�
 
 モジュール関連図にするとこんな形になります。
 
-```text
-Human
- ├─ 要求・目的設定
- ├─ 各工程レビュー
- └─ 実機操作承認
-          │
-          ▼
-┌──────── Sandbox ─────────┐
-│ AI Agent                 │
-│ Integration Test         │
-│ Framework                │
-│                          │
-│ Test Analysis            │
-│ Test Design              │
-│ Test Implementation      │
-│ Test Evaluation          │
-│                          │
-│ Credential = NONE        │
-└──────────┬───────────────┘
-           │ Capability API
-           ▼
-═══════ TRUST BOUNDARY ═══════
-           │
-┌──────────▼───────────────┐
-│ Secure Execution Gateway │
-│                          │
-│ Authentication           │
-│ Authorization            │
-│ Policy Enforcement       │
-│ Human Approval Check     │
-│ Credential Management    │
-│ Audit                    │
-└──────────┬───────────────┘
-           │ SSH/API/MQTT...
-           ▼
-┌──────────────────────────┐
-│ Test Environment         │
-│ IoT / Edge / Cloud       │
-└──────────────────────────┘
-```
+![結合テストフレームワークの全体構成](images/301-system-architecture.png)
 
 図の矢印は操作要求の流れを示しています。実行結果は Gateway を通して Sandbox 側へ戻し、評価に使います。人の実機操作承認は、Gateway 側で確認します。
 
@@ -162,7 +123,7 @@ AI Agent と結合テストフレームワークは、Sandbox の中に配置し
 
 この中でテストを分析・設計・実装し、実行結果を評価します。テストを進める際も、対象へ直接接続する権限は持たせず、必要な操作を外側へ要求します。
 
-図の `Credential = NONE` は、テスト対象に接続するための SSH 鍵やパスワードなどを、この中に持たせない方針を表しています。
+図の「接続用認証情報を保持しない」は、テスト対象に接続するための SSH 鍵やパスワードなどを、この中に持たせない方針を表しています。
 
 ### Capability API：要求できる操作を限定する
 
@@ -176,7 +137,7 @@ Sandbox と外側をつなぐ窓口が Capability API です。ここでいう C
 
 要求元の確認、操作権限の確認、ポリシーの適用、人の承認確認を行い、許可した操作をテスト対象へ渡します。接続用認証情報の管理と操作の記録も、こちらの責務です。
 
-図の TRUST BOUNDARY（信頼境界）は、AI 側の要求をそのまま信用せず、実行側で確認する切れ目を示しています。AI が操作を提案することと、その操作を実行してよいことを線引きしています。
+図の「信頼境界」は、AI 側の要求をそのまま信用せず、実行側で確認する切れ目を示しています。AI が操作を提案することと、その操作を実行してよいことを線引きしています。
 
 ### Test Environment：結合テストを行う環境
 
